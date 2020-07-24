@@ -6,17 +6,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <!-- toastr -->
+    <link rel="stylesheet" href="css/toastr.css">
+    <!-- fontawesome -->
+    <link rel="stylesheet" href="css/all.css">
+
+    <link rel="stylesheet" href="css/app.css">
 
     <title>Gemography github repos</title>
+
+
 </head>
 <body>
 
+<div id="app" v-cloak>
+
+    <h1>Most star github repos</h1>
+
+    <ul id="repos" class="list-unstyled" v-if="repos.length > 0 ">
+        <github-repo v-for="repo in repos" :repo="repo" :key="repo.id"></github-repo>
+
+        <li class="media" v-if="reposData.isBusy">
+            <div class="media-body d-flex justify-content-center">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </li>
+    </ul>
+
+
+</div>
 
 <!-- Optional JavaScript -->
 <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+<script src="js/jquery-3.5.1.slim.min.js"></script>
+<script src="js/popper.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<!-- Vue.js -->
+<script src="js/vue.js"></script>
+<!-- axios -->
+<script src="js/axios.js"></script>
+<!-- moment -->
+<script src="js/moment.js"></script>
+<!-- toastr -->
+<script src="js/toastr.min.js"></script>
+
+<script>
+
+    Vue.component('github-repo', {
+        props: ['repo'],
+        computed: {
+            agoDate() {
+                return moment(this.repo.pushed_at).fromNow()
+            }
+        },
+        template: `
+            <li class="media p-3">
+                <img :src="repo.owner.avatar_url" class="mr-3" :alt="repo.owner.login">
+                <div class="media-body">
+                    <a class="mt-0 mb-1 list-unstyled" :href="repo.html_url">
+                        <h5>
+                            {{ repo.full_name }}
+                        </h5>
+                    </a>
+                    {{ repo.description }}
+                    <div>
+                        <span class="badge badge-primary">Stars: {{ repo.stargazers_count }}</span>
+                        <span class="badge badge-success">Issues: {{ repo.open_issues }}</span>
+                        Submitted {{ agoDate }} by {{ repo.owner.login }}
+                    </div>
+                </div>
+            </li>
+        `
+    })
+
+
+    new Vue({
+        el: '#app',
+        data() {
+
+            let last30Days = moment().subtract(30, 'days').format('YYYY-MM-DD');
+            var baseUrl = `https://api.github.com/search/repositories?q=created:>${last30Days}&sort=stars&order=desc`;
+
+            return {
+                baseUrl: baseUrl,
+                repos: [],
+                reposData: {
+                    currentPage: 1,
+                    isBusy: false,
+                }
+            }
+        },
+        created() {
+            this.fetchRepos()
+
+            window.onscroll = () => {
+                let isBottom = document.documentElement.scrollTop + window.innerHeight === document.documentElement.offsetHeight
+
+                if (isBottom) {
+                    this.fetchRepos()
+                }
+            }
+        },
+        computed: {
+            url() {
+
+                var baseUrl = this.baseUrl;
+
+                if (this.reposData.currentPage > 0) baseUrl += '&page=' + this.reposData.currentPage
+
+                return baseUrl;
+            }
+        },
+        methods: {
+            async fetchRepos() {
+
+                if (this.reposData.isBusy) return;
+
+                this.reposData.isBusy = true;
+
+                try {
+                    let response = await axios.get(this.url)
+
+                    response.data.items.forEach((repo) => {
+                        this.repos.push(repo)
+                    })
+
+                    this.reposData.isBusy = false;
+
+                    this.reposData.currentPage += 1
+
+                } catch (e) {
+
+                    toastr.error('An error occured while fetching data from github!')
+
+                    this.reposData.isBusy = false;
+                }
+            }
+        }
+    })
+
+</script>
+
 </body>
 </html>

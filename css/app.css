@@ -1,0 +1,17 @@
+#repos .media img {
+    height: 80px;
+}
+
+#repos .media{
+    word-break: break-word;
+}
+
+#repos .media .media-body h5{
+    cursor: pointer;
+    color: black;
+}
+
+
+[v-cloak] {
+    display: none;
+}
